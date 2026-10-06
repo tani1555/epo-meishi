@@ -219,8 +219,22 @@ function firstMatch(t,re){let m=t.match(re);return m?m[1].trim():''}
 // ひらがなだけの行（ふりがな）を氏名として選ばない
 // OCRで氏名の前後に英字や記号が混ざった場合にも対応
 let nameLine = null;
+// 「Name」「Nme」などの直後にある日本語氏名を最優先
+for(let x of lines){
+  if(/\b(?:Name|Nme)\b/i.test(x)){
+    let n = x
+      .replace(/^.*?\b(?:Name|Nme)\b[:：\s_-]*/i,'')
+      .replace(/[^一-龠々ぁ-んァ-ヶー\s]/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
 
-for(let x of candidates){
+    if(/[一-龠々]{2,}/.test(n)){
+      nameLine = n;
+      break;
+    }
+  }
+}
+if(!nameLine) for(let x of candidates){
   let cleaned = x
     .replace(/[A-Za-z0-9]/g,' ')
     .replace(/[^一-龠々ぁ-んァ-ヶー\s]/g,' ')

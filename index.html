@@ -24,51 +24,145 @@ file.onchange=e=>{let f=e.target.files[0];if(!f)return;selectedFile=f;manualAngl
 function normalizeText(t){return String(t||'').replace(/\r/g,'').replace(/[：]/g,':').replace(/[‐‑‒–—―ー]/g,'-').replace(/＠/g,'@').replace(/[．。]/g,'.').replace(/\u3000/g,' ').trim()}
 function firstMatch(t,re){let m=t.match(re);return m?m[1].trim():''}
 function parseCardText(text){
-  let t=normalizeText(text), lines=t.split('\n').map(x=>x.trim()).filter(Boolean);
-  let o={date:new Date().toISOString().slice(0,10),status:'未対応'};
+  let t = normalizeText(text);
+  let lines = t.split('\n').map(x=>x.trim()).filter(Boolean);
+  let o = {
+    date:new Date().toISOString().slice(0,10),
+    status:'未対応'
+  };
 
-  o.email=firstMatch(t,/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i);
-  o.web=firstMatch(t,/((?:https?:\/\/)?(?:www\.)?[a-z0-9][a-z0-9.-]+\.(?:jp|com|net|org|co\.jp)(?:\/\S*)?)/i);
-
-  let zm=t.match(/(?:〒\s*)?(\d{3})[-ー－―‐\s](\d{4})(?!\d)/);
-  if(zm) o.zip=zm[1]+'-'+zm[2];
-
-  const phoneRx=/(?:0\d{1,4})[-ー－―‐\s]\d{1,4}[-ー－―‐\s]\d{3,4}/g;
-  let phones=[...t.matchAll(phoneRx)].map(m=>({raw:m[0],idx:m.index,val:m[0].replace(/[ー－―‐\s]/g,'-')}));
-  for(const p of phones){
-    const ctx=t.slice(Math.max(0,p.idx-18),Math.min(t.length,p.idx+p.raw.length+8));
-    if(/FAX|ファックス/i.test(ctx)){if(!o.fax)o.fax=p.val;continue}
-    if(/携帯|Mobile|MOBILE|携帯電話/i.test(ctx)||/^0(?:70|80|90)-/.test(p.val)){if(!o.mobile)o.mobile=p.val;continue}
-    if(/TEL|Tel|電話/i.test(ctx)){if(!o.tel)o.tel=p.val;continue}
-    if(!o.tel)o.tel=p.val;
+  // メールアドレス
+  // OCRで E-mail: の後ろに空白が混ざっても拾う
+  let emailLine = lines.find(x=>/e[\s-]*mail|メール/i.test(x));
+  if(emailLine){
+    let cleaned = emailLine
+      .replace(/e[\s-]*mail\s*[:：]?\s*/i,'')
+      .replace(/\s+/g,'');
+    let m = cleaned.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    if(m) o.email = m[0];
+  }
+  if(!o.email){
+    let compact = t.replace(/\s+/g,'');
+    let m = compact.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    if(m) o.email = m[0];
   }
 
-  let companyLine=lines.find(x=>/(株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|NPO法人|特定非営利活動法人)/.test(x));
-  if(companyLine)o.company=companyLine.replace(/^(会社名|Company)[:：\s]*/i,'').trim();
+  // Webサイト
+  o.web = firstMatch(
+    t,
+    /((?:https?:\/\/)?(?:www\.)?[a-z0-9][a-z0-9.-]+\.(?:jp|com|net|org|co\.jp)(?:\/\S*)?)/i
+  );
 
-  let officeLine=lines.find(x=>/(事業所|営業所|支店|支社|センター|オフィス|Office)/i.test(x)&&x!==companyLine);
-  if(officeLine)o.office=officeLine.trim();
+  // 郵便番号
+  // 〒800-0077、〒8002-0077 のようなOCR揺れにも対応
+  let zipLine = lines.find(x=>/〒|郵便/.test(x));
+  if(zipLine){
+    let digits = zipLine.replace(/[^\d]/g,'');
+    if(digits.length >= 7){
+      digits = digits.slice(0,7);
+      o.zip = digits.slice(0,3) + '-' + digits.slice(3);
+    }
+  }
 
-  let dept=lines.find(x=>/(事業部|営業部|総務部|管理部|IT部門|開発部|企画部|チーム|部|課|室|局)/.test(x)&&!/(住所|部署名|会社名)/.test(x));
-  if(dept)o.department=dept.trim();
+  // 電話番号：ラベルを最優先
+  const phoneRx = /0\d{1,4}[-ー―‐\s]\d{1,4}[-ー―‐\s]\d{3,4}/g;
 
-  let title=lines.find(x=>/(代表取締役|取締役|代表社員|社長|副社長|専務|常務|部長|課長|係長|主任|所長|施設長|管理者|責任者|マネージャー|エンジニア|デザイナー)/.test(x));
-  if(title)o.title=title.trim();
+  for(const line of lines){
+    let matches = line.match(phoneRx);
+    if(!matches) continue;
 
-  let addrLines=lines.filter(x=>/(都|道|府|県).*(市|区|郡|町|村)|(?:市|区).*(?:町|丁目|\d[-－ー]\d)/.test(x)&&!/@|https?:|www\.|TEL|FAX/i.test(x));
-  if(addrLines.length)o.address=addrLines.join(' ').replace(/〒?\s*\d{3}[-ー－―‐]\d{4}/,'').trim();
+    for(let val of matches){
+      val = val.replace(/[ー―‐\s]/g,'-');
 
-  const bad=/(株式会社|有限会社|合同会社|法人|事業所|営業所|支店|支社|センター|部|課|室|代表|取締役|社長|部長|課長|主任|TEL|FAX|電話|携帯|Mail|E-mail|@|http|www|〒|\d{2,})/i;
-  let candidates=lines.filter(x=>!bad.test(x)&&!/[都道府県].*[市区町村]/.test(x));
+      if(/FAX|ファックス/i.test(line)){
+        if(!o.fax) o.fax = val;
+        continue;
+      }
 
-  let nameLine=candidates.find(x=>{
+      if(/携帯|Mobile|MOBILE|携帯電話/i.test(line)){
+        if(!o.mobile) o.mobile = val;
+        continue;
+      }
+
+      // TEL: と明記されている場合は070でもTELへ入れる
+      if(/TEL|Tel|電話/i.test(line)){
+        if(!o.tel) o.tel = val;
+        continue;
+      }
+
+      // ラベルが無い場合だけ070/080/090を携帯扱い
+      if(/^0(?:70|80|90)-/.test(val)){
+        if(!o.mobile) o.mobile = val;
+      }else{
+        if(!o.tel) o.tel = val;
+      }
+    }
+  }
+
+  // 会社名
+  let companyLine = lines.find(x=>
+    /(株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|NPO法人|特定非営利活動法人)/.test(x)
+  );
+  if(companyLine){
+    o.company = companyLine
+      .replace(/^(会社名|Company)[:：\s]*/i,'')
+      .trim();
+  }
+
+  // 事業所名
+  let officeLine = lines.find(x=>
+    /(事業所|営業所|支店|支社|センター|オフィス|Office)/i.test(x) &&
+    x !== companyLine
+  );
+  if(officeLine) o.office = officeLine.trim();
+
+  // 部署
+  let dept = lines.find(x=>
+    /(事業部|営業部|総務部|管理部|IT部門|開発部|企画部|チーム|部|課|室|局)/.test(x) &&
+    !/(住所|会社名)/.test(x)
+  );
+  if(dept) o.department = dept.trim();
+
+  // 役職
+  let title = lines.find(x=>
+    /(代表取締役|取締役|代表社員|社長|副社長|専務|常務|部長|課長|係長|主任|所長|施設長|管理者|責任者|マネージャー|エンジニア|デザイナー)/.test(x)
+  );
+  if(title) o.title = title.trim();
+
+  // 住所
+  let addrLines = lines.filter(x=>
+    /(都|道|府|県).*(市|区|郡|町|村)/.test(x) &&
+    !/@|https?:|www\.|TEL|FAX/i.test(x)
+  );
+  if(addrLines.length){
+    o.address = addrLines.join(' ')
+      .replace(/〒?\s*\d{3}[-ー―‐\s]?\d{4}/,'')
+      .trim();
+  }
+
+  // 氏名候補
+  const bad = /(株式会社|有限会社|合同会社|法人|事業所|営業所|支店|支社|センター|部|課|室|代表|取締役|社長|部長|課長|主任|TEL|FAX|電話|携帯|Mail|E-mail|@|http|www|〒|\d{2,})/i;
+
+  let candidates = lines.filter(x=>
+    !bad.test(x) &&
+    !/(都|道|府|県).*(市|区|郡|町|村)/.test(x)
+  );
+
+  let nameLine = candidates.find(x=>{
     let s=x.replace(/\s/g,'');
-    return /^[一-龯々ぁ-んァ-ヶー]{2,10}$/.test(s);
+    return /^[一-龠々ぁ-んァ-ヶー]{2,10}$/.test(s);
   });
-  if(nameLine)o.name=nameLine.replace(/\s+/g,' ').trim();
 
-  let roman=candidates.find(x=>/^[A-Za-z][A-Za-z .'-]{2,35}$/.test(x)&&x.split(/\s+/).length>=2);
-  if(roman)o.roman=roman.trim();
+  if(nameLine){
+    o.name = nameLine.replace(/\s+/g,' ').trim();
+  }
+
+  // 英字氏名
+  let roman = candidates.find(x=>
+    /^[A-Za-z][A-Za-z .'-]{2,35}$/.test(x) &&
+    x.split(/\s+/).length >= 2
+  );
+  if(roman) o.roman = roman.trim();
 
   return o;
 }

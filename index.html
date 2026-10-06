@@ -23,6 +23,217 @@ file.onchange=e=>{let f=e.target.files[0];if(!f)return;selectedFile=f;manualAngl
 
 function normalizeText(t){return String(t||'').replace(/\r/g,'').replace(/[：]/g,':').replace(/[‐‑‒–—―ー]/g,'-').replace(/＠/g,'@').replace(/[．。]/g,'.').replace(/\u3000/g,' ').trim()}
 function firstMatch(t,re){let m=t.match(re);return m?m[1].trim():''}
+  function parseCardText(text){
+  let t = normalizeText(text);
+  let lines = t.split('\n').map(x=>x.trim()).filter(Boolean);
+
+  let o = {
+    date:new Date().toISOString().slice(0,10),
+    status:'未対応'
+  };
+
+  // -------------------------
+  // メールアドレス
+  // OCRでメール内に空白が入った場合にも対応
+  // -------------------------
+  let compact = t.replace(/\s+/g,'');
+
+  let emailMatch = compact.match(
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
+  );
+
+  if(emailMatch){
+    o.email = emailMatch[0]
+      .replace(/[|｜]/g,'')
+      .trim();
+  }
+
+  // -------------------------
+  // Webサイト
+  // -------------------------
+  let webMatch = compact.match(
+    /(?:https?:\/\/)?(?:www\.)?[a-z0-9][a-z0-9.-]+\.(?:jp|com|net|org|co\.jp)(?:\/[^\s]*)?/i
+  );
+
+  if(webMatch){
+    let w = webMatch[0];
+
+    // メールアドレスのドメイン部分をWebとして拾わない
+    if(!o.email || !o.email.includes(w)){
+      o.web = w;
+    }
+  }
+
+  // -------------------------
+  // 郵便番号
+  // 〒8002-0077 のようなOCR誤認にも対応
+  // -------------------------
+  let zipLine = lines.find(x=>/〒|郵便/.test(x));
+
+  if(zipLine){
+    let digits = zipLine.replace(/[^\d]/g,'');
+
+    if(digits.length >= 7){
+      // 8桁になった場合は末尾7桁を優先
+      digits = digits.slice(-7);
+      o.zip = digits.slice(0,3) + '-' + digits.slice(3,7);
+    }
+  }
+
+  // -------------------------
+  // 電話番号
+  // -------------------------
+  let phoneRx = /(?:0\d{1,4})[\s\-ー―—−]*\d{1,4}[\s\-ー―—−]*\d{3,4}/g;
+
+  let phones = [];
+
+  for(let i=0;i<lines.length;i++){
+    let line = lines[i];
+
+    let found = [...line.matchAll(phoneRx)];
+
+    for(let m of found){
+      let val = m[0]
+        .replace(/[ー―—−\s]/g,'-')
+        .replace(/-+/g,'-');
+
+      let context = line;
+
+      if(/FAX|ファックス/i.test(context)){
+        if(!o.fax) o.fax = val;
+        continue;
+      }
+
+      if(/携帯|Mobile|MOBILE|携帯電話/i.test(context)){
+        if(!o.mobile) o.mobile = val;
+        continue;
+      }
+
+      if(/TEL|Tel|電話/i.test(context)){
+        if(!o.tel) o.tel = val;
+        continue;
+      }
+
+      phones.push(val);
+    }
+  }
+
+  // ラベルが壊れていても070/080/090なら携帯電話を優先
+  for(let p of phones){
+    if(/^(070|080|090)/.test(p)){
+      if(!o.mobile) o.mobile = p;
+    }else{
+      if(!o.tel) o.tel = p;
+    }
+  }
+
+  // TELとして読まれていても070/080/090なら携帯へ移す
+  if(o.tel && /^(070|080|090)/.test(o.tel) && !o.mobile){
+    o.mobile = o.tel;
+    o.tel = '';
+  }
+
+  // -------------------------
+  // 会社名
+  // -------------------------
+  let companyLine = lines.find(x=>
+    /(株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|NPO法人|特定非営利活動法人)/.test(x)
+  );
+
+  if(companyLine){
+    o.company = companyLine
+      .replace(/^(会社名|Company)[:：\s]*/i,'')
+      .trim();
+  }
+
+  // -------------------------
+  // 事業所名
+  // -------------------------
+  let officeLine = lines.find(x=>
+    /(事業所|営業所|支店|支社|センター|オフィス|Office)/i.test(x) &&
+    x !== companyLine
+  );
+
+  if(officeLine){
+    o.office = officeLine.trim();
+  }
+
+  // -------------------------
+  // 部署
+  // -------------------------
+  let dept = lines.find(x=>
+    /(事業部|営業部|総務部|管理部|IT部門|開発部|企画部|チーム|部|課|室|局)/.test(x) &&
+    !/(住所|会社名)/.test(x)
+  );
+
+  if(dept){
+    o.department = dept.trim();
+  }
+
+  // -------------------------
+  // 役職
+  // -------------------------
+  let title = lines.find(x=>
+    /(代表取締役|取締役|代表社員|社長|副社長|専務|常務|部長|課長|係長|主任|所長|施設長|管理者|責任者|マネージャー|エンジニア|デザイナー)/.test(x)
+  );
+
+  if(title){
+    o.title = title.trim();
+  }
+
+  // -------------------------
+  // 住所
+  // 都道府県、市区町村がある行を優先
+  // -------------------------
+  let addressLines = lines.filter(x=>
+    /(都|道|府|県).*(市|区|郡|町|村)/.test(x) &&
+    !/@|https?:|www\.|TEL|FAX|E-mail|メール/i.test(x)
+  );
+
+  if(addressLines.length){
+    o.address = addressLines.join(' ')
+      .replace(/〒?\s*\d{3}[\s\-ー―—−]*\d{4}/,'')
+      .replace(/[|｜{}\[\]]/g,'')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  // -------------------------
+  // 氏名候補
+  // -------------------------
+  const bad = /(株式会社|有限会社|合同会社|法人|事業所|営業所|支店|支社|センター|部|課|室|代表|取締役|社長|部長|課長|主任|TEL|FAX|電話|携帯|Mail|E-mail|http|www|〒|社会福祉士|精神保健福祉士|保育士)/i;
+
+  let candidates = lines.filter(x=>
+    !bad.test(x) &&
+    !/(都|道|府|県).*(市|区|郡|町|村)/.test(x) &&
+    !/@/.test(x) &&
+    !/\d{3,}/.test(x)
+  );
+
+  // 日本語氏名
+  let nameLine = candidates.find(x=>{
+    let s = x.replace(/\s/g,'');
+    return /^[一-龠々ぁ-んァ-ヶー]{2,12}$/.test(s);
+  });
+
+  if(nameLine){
+    o.name = nameLine.replace(/\s+/g,' ').trim();
+  }
+
+  // -------------------------
+  // 英字氏名
+  // -------------------------
+  let roman = candidates.find(x=>
+    /^[A-Za-z][A-Za-z .'-]{2,35}$/.test(x) &&
+    x.split(/\s+/).length >= 2
+  );
+
+  if(roman){
+    o.roman = roman.trim();
+  }
+
+  return o;
+}
 function parseCardText(text){
   let t = normalizeText(text);
   let lines = t.split('\n').map(x=>x.trim()).filter(Boolean);

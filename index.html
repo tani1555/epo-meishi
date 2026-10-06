@@ -1,524 +1,1515 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EPO 名刺管理 OCR版</title><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><link rel="manifest" href="manifest.json"><style>
-:root{--b:#0969da;--bg:#f5f7fb;--bd:#d8dee8;--tx:#172033}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx)}header{background:#fff;border-bottom:1px solid var(--bd);padding:14px 18px;font-weight:800;color:#064b9a;position:sticky;top:0}main{max-width:1000px;margin:auto;padding:18px}.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.tabs button,.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}.tabs button{background:#e9eef6}.tabs button.on,.btn{background:var(--b);color:white}.card{background:white;border:1px solid var(--bd);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 3px 12px #0000000a}.hero{text-align:center;padding:28px}.camera{font-size:20px;padding:18px 26px}.preview{max-width:310px;width:100%;border-radius:10px;margin:12px auto;display:block}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}label{font-size:12px;font-weight:700;color:#536176}input,select,textarea{width:100%;padding:10px;border:1px solid #cbd4e1;border-radius:8px;margin-top:5px;font:inherit}textarea{min-height:90px}.full{grid-column:1/-1}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.secondary{background:#e8eef7;color:#17355d}.danger{background:#b42318}.hidden{display:none}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #e5e9f0;font-size:14px}.muted{color:#687386;font-size:13px}.badge{background:#dbeafe;color:#0756a8;border-radius:999px;padding:3px 8px;font-size:12px}@media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}table{display:block;overflow:auto}.camera{width:100%;font-size:22px;padding:22px}}
-</style></head><body><header>💳 EPO 名刺管理 <span class="muted">無料OCR版 v5.1</span></header><main><div class="muted" style="text-align:right;margin-bottom:8px">Version 5.1</div>
-<div class="tabs"><button class="on" data-v="scan">名刺を読み取る</button><button data-v="list">顧客一覧</button></div>
-<section id="scan">
-<div class="card hero"><h2>名刺を撮影・選択</h2><p class="muted">スマホではカメラが起動します。PCでは画像ファイルを選択できます。</p><input id="file" type="file" accept="image/*" capture="environment" hidden><button class="btn camera" onclick="file.click()">📷 名刺を撮影</button><img id="preview" class="preview hidden"></div>
-<div id="ocrBox" class="card hidden"><h2>OCR読み取り</h2><p id="ocrStatus" class="muted">画像を選択すると日本語＋英語OCRを開始できます。</p><div style="height:10px;background:#e8eef7;border-radius:999px;overflow:hidden"><div id="ocrBar" style="height:100%;width:0;background:#0969da;transition:.2s"></div></div><div class="actions">
-<button id="ocrBtn" class="btn" onclick="runOCR()">🔎 無料OCRで読み取る</button>
-<button class="btn secondary" onclick="manualRotate(-90)">↶ 左90°</button>
-<button class="btn secondary" onclick="manualRotate(90)">↷ 右90°</button>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EPO 名刺管理 OCR版</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root{
+  --b:#0969da;
+  --bg:#f5f7fb;
+  --bd:#d8dee8;
+  --tx:#172033;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
+  background:var(--bg);
+  color:var(--tx);
+}
+header{
+  background:#fff;
+  border-bottom:1px solid var(--bd);
+  padding:14px 18px;
+  font-weight:800;
+  color:#064b9a;
+  position:sticky;
+  top:0;
+}
+main{
+  max-width:1000px;
+  margin:auto;
+  padding:18px;
+}
+.tabs{
+  display:flex;
+  gap:8px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+}
+.tabs button,.btn{
+  border:0;
+  border-radius:10px;
+  padding:11px 15px;
+  font-weight:700;
+  cursor:pointer;
+}
+.tabs button{background:#e9eef6}
+.tabs button.on,.btn{
+  background:var(--b);
+  color:white;
+}
+.card{
+  background:white;
+  border:1px solid var(--bd);
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:0 3px 12px #0000000a;
+}
+.hero{
+  text-align:center;
+  padding:28px;
+}
+.camera{
+  font-size:20px;
+  padding:18px 26px;
+}
+.preview{
+  max-width:310px;
+  width:100%;
+  border-radius:10px;
+  margin:12px auto;
+  display:block;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+label{
+  font-size:12px;
+  font-weight:700;
+  color:#536176;
+}
+input,select,textarea{
+  width:100%;
+  padding:10px;
+  border:1px solid #cbd4e1;
+  border-radius:8px;
+  margin-top:5px;
+  font:inherit;
+}
+textarea{min-height:90px}
+.full{grid-column:1/-1}
+.actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
+.secondary{
+  background:#e8eef7;
+  color:#17355d;
+}
+.danger{background:#b42318}
+.hidden{display:none}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  text-align:left;
+  padding:10px;
+  border-bottom:1px solid #e5e9f0;
+  font-size:14px;
+}
+.muted{
+  color:#687386;
+  font-size:13px;
+}
+.badge{
+  background:#dbeafe;
+  color:#0756a8;
+  border-radius:999px;
+  padding:3px 8px;
+  font-size:12px;
+}
+
+@media(max-width:650px){
+  .grid{grid-template-columns:1fr}
+  .full{grid-column:auto}
+  table{display:block;overflow:auto}
+  .camera{
+    width:100%;
+    font-size:22px;
+    padding:22px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  💳 EPO 名刺管理
+  <span class="muted">無料OCR版 v5.2</span>
+</header>
+
+<main>
+
+<div class="muted" style="text-align:right;margin-bottom:8px">
+  Version 5.2
 </div>
-<p class="muted">v5.1では画像補正・向き判定に加え、日本の名刺向けに会社名・氏名・郵便番号・住所・TEL・FAX・携帯・メール・Webの振り分けを強化しています。</p>
-<canvas id="workCanvas" class="hidden"></canvas><details style="margin-top:12px"><summary>OCR原文を確認</summary><textarea id="rawOcr" style="width:100%;min-height:160px"></textarea><button class="btn secondary" onclick="parseAndFill(rawOcr.value)">原文から項目を再判定</button></details></div>
-<div id="formCard" class="card hidden"><h2>読み取り結果の確認</h2><p class="muted">OCR結果は誤認識する場合があります。登録前に必ず内容を確認・修正してください。</p><div class="grid" id="fields"></div><div class="actions"><button class="btn" onclick="save()">この内容で登録</button><button class="btn secondary" onclick="clearForm()">クリア</button></div></div>
+
+<div class="tabs">
+  <button class="on" data-v="scan">名刺を読み取る</button>
+  <button data-v="list">顧客一覧</button>
+</div>
+
+<section id="scan">
+
+<div class="card hero">
+  <h2>名刺を撮影・選択</h2>
+
+  <p class="muted">
+    スマホではカメラが起動します。PCでは画像ファイルを選択できます。
+  </p>
+
+  <input
+    id="file"
+    type="file"
+    accept="image/*"
+    capture="environment"
+    hidden
+  >
+
+  <button id="cameraBtn" class="btn camera" type="button">
+    📷 名刺を撮影
+  </button>
+
+  <img id="preview" class="preview hidden">
+</div>
+
+<div id="ocrBox" class="card hidden">
+
+<h2>OCR読み取り</h2>
+
+<p id="ocrStatus" class="muted">
+画像を選択すると日本語＋英語OCRを開始できます。
+</p>
+
+<div style="height:10px;background:#e8eef7;border-radius:999px;overflow:hidden">
+  <div id="ocrBar"
+       style="height:100%;width:0;background:#0969da;transition:.2s">
+  </div>
+</div>
+
+<div class="actions">
+  <button id="ocrBtn" class="btn" type="button">
+    🔎 無料OCRで読み取る
+  </button>
+
+  <button id="leftBtn" class="btn secondary" type="button">
+    ↶ 左90°
+  </button>
+
+  <button id="rightBtn" class="btn secondary" type="button">
+    ↷ 右90°
+  </button>
+</div>
+
+<p class="muted">
+画像補正・向き判定に加え、日本の名刺向けに会社名・氏名・
+郵便番号・住所・TEL・FAX・携帯・メール・Webの振り分けを行います。
+</p>
+
+<canvas id="workCanvas" class="hidden"></canvas>
+
+<details style="margin-top:12px">
+  <summary>OCR原文を確認</summary>
+
+  <textarea id="rawOcr"
+            style="width:100%;min-height:160px"></textarea>
+
+  <button id="reparseBtn"
+          class="btn secondary"
+          type="button">
+    原文から項目を再判定
+  </button>
+</details>
+
+</div>
+
+<div id="formCard" class="card hidden">
+
+<h2>読み取り結果の確認</h2>
+
+<p class="muted">
+OCR結果は誤認識する場合があります。
+登録前に必ず内容を確認・修正してください。
+</p>
+
+<div class="grid" id="fields"></div>
+
+<div class="actions">
+  <button id="saveBtn" class="btn" type="button">
+    この内容で登録
+  </button>
+
+  <button id="clearBtn" class="btn secondary" type="button">
+    クリア
+  </button>
+</div>
+
+</div>
+
 </section>
-<section id="list" class="hidden"><div class="card"><h2>顧客一覧</h2><input id="q" placeholder="会社名・氏名・電話・メールで検索" oninput="render()"><div class="actions"><button class="btn secondary" onclick="exportCSV()">CSV出力</button></div><div style="overflow:auto;margin-top:12px"><table><thead><tr><th>会社名</th><th>氏名</th><th>TEL</th><th>メール</th><th>ステータス</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></div></section>
-</main><script>
-const defs=[['company','会社名'],['office','事業所名'],['department','部署／部門'],['title','役職'],['name','氏名'],['kana','ふりがな'],['roman','英字氏名'],['zip','郵便番号'],['address','住所','full'],['tel','TEL'],['fax','FAX'],['mobile','携帯電話'],['email','メールアドレス'],['web','Webサイト'],['date','名刺交換日'],['event','イベント名／場所'],['owner','自社担当者'],['status','ステータス'],['memo','メモ','full']];
-const fields=document.getElementById('fields'); defs.forEach(([id,l,c])=>{let d=document.createElement('div');if(c)d.className=c;d.innerHTML=`<label>${l}<${id==='memo'?'textarea':'input'} id="${id}" ${id==='date'?'type="date"':''}></${id==='memo'?'textarea':'input'}></label>`;fields.appendChild(d)});
-function fill(o){defs.forEach(([id])=>document.getElementById(id).value=o[id]||'');formCard.classList.remove('hidden')}
-let selectedFile=null, manualAngle=0;
-file.onchange=e=>{let f=e.target.files[0];if(!f)return;selectedFile=f;manualAngle=0;preview.src=URL.createObjectURL(f);preview.classList.remove('hidden');ocrBox.classList.remove('hidden');rawOcr.value='';ocrBar.style.width='0%';ocrStatus.textContent='画像を選択しました。「無料OCRで読み取る」を押してください。';fill({date:new Date().toISOString().slice(0,10),status:'未対応'})}
 
-function normalizeText(t){return String(t||'').replace(/\r/g,'').replace(/[：]/g,':').replace(/[‐‑‒–—―ー]/g,'-').replace(/＠/g,'@').replace(/[．。]/g,'.').replace(/\u3000/g,' ').trim()}
-function firstMatch(t,re){let m=t.match(re);return m?m[1].trim():''}
-  function parseCardText(text){
-  let t = normalizeText(text);
-  let lines = t.split('\n').map(x=>x.trim()).filter(Boolean);
+<section id="list" class="hidden">
 
-  let o = {
-    date:new Date().toISOString().slice(0,10),
+<div class="card">
+
+<h2>顧客一覧</h2>
+
+<input id="q"
+       placeholder="会社名・氏名・電話・メールで検索">
+
+<div class="actions">
+  <button id="csvBtn"
+          class="btn secondary"
+          type="button">
+    CSV出力
+  </button>
+</div>
+
+<div style="overflow:auto;margin-top:12px">
+
+<table>
+<thead>
+<tr>
+  <th>会社名</th>
+  <th>氏名</th>
+  <th>TEL</th>
+  <th>メール</th>
+  <th>ステータス</th>
+  <th></th>
+</tr>
+</thead>
+
+<tbody id="rows"></tbody>
+
+</table>
+
+</div>
+</div>
+</section>
+
+</main>
+
+<script>
+
+const defs = [
+  ['company','会社名'],
+  ['office','事業所名'],
+  ['department','部署／部門'],
+  ['title','役職'],
+  ['name','氏名'],
+  ['kana','ふりがな'],
+  ['roman','英字氏名'],
+  ['zip','郵便番号'],
+  ['address','住所','full'],
+  ['tel','TEL'],
+  ['fax','FAX'],
+  ['mobile','携帯電話'],
+  ['email','メールアドレス'],
+  ['web','Webサイト'],
+  ['date','名刺交換日'],
+  ['event','イベント名／場所'],
+  ['owner','自社担当者'],
+  ['status','ステータス'],
+  ['memo','メモ','full']
+];
+
+const fields = document.getElementById('fields');
+const fileInput = document.getElementById('file');
+const preview = document.getElementById('preview');
+const ocrBox = document.getElementById('ocrBox');
+const formCard = document.getElementById('formCard');
+const rawOcr = document.getElementById('rawOcr');
+const ocrBar = document.getElementById('ocrBar');
+const ocrStatus = document.getElementById('ocrStatus');
+const ocrBtn = document.getElementById('ocrBtn');
+const rows = document.getElementById('rows');
+const q = document.getElementById('q');
+
+defs.forEach(([id,label,cls])=>{
+  const d = document.createElement('div');
+
+  if(cls){
+    d.className = cls;
+  }
+
+  const element = id === 'memo' ? 'textarea' : 'input';
+
+  d.innerHTML =
+    `<label>${label}
+      <${element}
+        id="${id}"
+        ${id === 'date' ? 'type="date"' : ''}>
+      </${element}>
+    </label>`;
+
+  fields.appendChild(d);
+});
+
+function today(){
+  return new Date().toISOString().slice(0,10);
+}
+
+function fill(o={}){
+  defs.forEach(([id])=>{
+    const el = document.getElementById(id);
+
+    if(el){
+      el.value = o[id] || '';
+    }
+  });
+
+  formCard.classList.remove('hidden');
+}
+
+let selectedFile = null;
+let manualAngle = 0;
+
+document.getElementById('cameraBtn').addEventListener('click',()=>{
+  fileInput.click();
+});
+
+fileInput.addEventListener('change',e=>{
+  const f = e.target.files && e.target.files[0];
+
+  if(!f){
+    return;
+  }
+
+  selectedFile = f;
+  manualAngle = 0;
+
+  if(preview.src && preview.src.startsWith('blob:')){
+    URL.revokeObjectURL(preview.src);
+  }
+
+  preview.src = URL.createObjectURL(f);
+  preview.classList.remove('hidden');
+  ocrBox.classList.remove('hidden');
+
+  rawOcr.value = '';
+  ocrBar.style.width = '0%';
+
+  ocrStatus.textContent =
+    '画像を選択しました。「無料OCRで読み取る」を押してください。';
+
+  fill({
+    date:today(),
+    status:'未対応'
+  });
+});
+
+function normalizeText(t){
+  return String(t || '')
+    .replace(/\r/g,'')
+    .replace(/[：]/g,':')
+    .replace(/[‐-‒–—―ー]/g,'-')
+    .replace(/＠/g,'@')
+    .replace(/[．。]/g,'.')
+    .replace(/\u3000/g,' ')
+    .trim();
+}
+
+function normalizeDashes(t){
+  return String(t || '')
+    .replace(/[‐-‒–—―ーｰ−]/g,'-');
+}
+
+function cleanSpaces(t){
+  return String(t || '')
+    .replace(/[ \u3000]+/g,' ')
+    .trim();
+}
+
+function cleanJapaneseLine(t){
+  return cleanSpaces(
+    String(t || '')
+      .replace(/[|｜{}\[\]<>_=]+/g,' ')
+  );
+}
+
+function formatPhone(value){
+  const digits = String(value || '').replace(/\D/g,'');
+
+  if(/^0(?:70|80|90)\d{8}$/.test(digits)){
+    return digits.replace(
+      /^(\d{3})(\d{4})(\d{4})$/,
+      '$1-$2-$3'
+    );
+  }
+
+  return normalizeDashes(value)
+    .replace(/\s+/g,'')
+    .replace(/-+/g,'-')
+    .replace(/^-|-$/g,'');
+}
+
+function parseCardText(text){
+
+  const t = normalizeText(text);
+
+  const lines = t
+    .split('\n')
+    .map(x=>x.trim())
+    .filter(Boolean);
+
+  const o = {
+    date:today(),
     status:'未対応'
   };
 
-  // -------------------------
-  // メールアドレス
-  // OCRでメール内に空白が入った場合にも対応
-  // -------------------------
-  let compact = t.replace(/\s+/g,'');
+  /*
+   * メールアドレス
+   */
+  const mailCompact = t
+    .replace(/\s+/g,'')
+    .replace(/[|｜]/g,'');
 
-  let emailMatch = compact.match(
+  const emailMatch = mailCompact.match(
     /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
   );
 
   if(emailMatch){
-    o.email = emailMatch[0]
-      .replace(/[|｜]/g,'')
-      .trim();
+    o.email = emailMatch[0];
   }
 
-  // -------------------------
-  // Webサイト
-  // -------------------------
-  let webMatch = compact.match(
-    /(?:https?:\/\/)?(?:www\.)?[a-z0-9][a-z0-9.-]+\.(?:jp|com|net|org|co\.jp)(?:\/[^\s]*)?/i
-  );
+  /*
+   * Webサイト
+   */
+  for(const line of lines){
 
-  if(webMatch){
-    let w = webMatch[0];
+    if(line.includes('@')){
+      continue;
+    }
 
-    // メールアドレスのドメイン部分をWebとして拾わない
-    if(!o.email || !o.email.includes(w)){
-      o.web = w;
+    const compactLine = line.replace(/\s+/g,'');
+
+    const webMatch = compactLine.match(
+      /(?:https?:\/\/|www\.)[a-z0-9][a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s]*)?/i
+    );
+
+    if(webMatch){
+      o.web = webMatch[0];
+      break;
     }
   }
 
-  // -------------------------
-  // 郵便番号
-  // 〒8002-0077 のようなOCR誤認にも対応
-  // -------------------------
-  let zipLine = lines.find(x=>/〒|郵便/.test(x));
+  /*
+   * 郵便番号
+   *
+   * 〒802-0077
+   * ¥802-0077
+   * T802-0077
+   * 〒8002-0077
+   * などのOCR揺れを考慮
+   */
+  for(const line of lines){
 
-  if(zipLine){
-    let digits = zipLine.replace(/[^\d]/g,'');
+    const z = normalizeDashes(line);
 
-    if(digits.length >= 7){
-      // 8桁になった場合は末尾7桁を優先
-      digits = digits.slice(-7);
-      o.zip = digits.slice(0,3) + '-' + digits.slice(3,7);
+    const looksPostal =
+      /〒|郵便/.test(z) ||
+      /^[¥￥TＴ]\s*\d{3,4}[-\s]\d{4}/i.test(z) ||
+      /^\s*\d{3}[-]\d{4}/.test(z);
+
+    if(!looksPostal){
+      continue;
+    }
+
+    const match = z.match(/(\d{3,4})\D*(\d{4})/);
+
+    if(match){
+
+      let first = match[1];
+      const last = match[2];
+
+      /*
+       * OCRで 802 が 8002 のように
+       * 4桁になる場合の補正
+       */
+      if(first.length === 4){
+
+        if(first[1] === first[2]){
+          first = first[0] + first.slice(2);
+        }else{
+          first = first[0] + first.slice(-2);
+        }
+      }
+
+      if(first.length === 3){
+        o.zip = first + '-' + last;
+        break;
+      }
     }
   }
 
-  // -------------------------
-  // 電話番号
-  // -------------------------
-  let phoneRx = /(?:0\d{1,4})[\s\-ー―—−]*\d{1,4}[\s\-ー―—−]*\d{3,4}/g;
+  /*
+   * 電話番号
+   */
+  const unlabeledPhones = [];
 
-  let phones = [];
+  for(const line of lines){
 
-  for(let i=0;i<lines.length;i++){
-    let line = lines[i];
+    const normalized = normalizeDashes(line);
 
-    let found = [...line.matchAll(phoneRx)];
+    const matches = normalized.match(
+      /0\d{1,4}[\s-]+\d{1,4}[\s-]+\d{3,4}/g
+    );
 
-    for(let m of found){
-      let val = m[0]
-        .replace(/[ー―—−\s]/g,'-')
-        .replace(/-+/g,'-');
+    if(!matches){
+      continue;
+    }
 
-      let context = line;
+    for(const match of matches){
 
-      if(/FAX|ファックス/i.test(context)){
-        if(!o.fax) o.fax = val;
+      const val = formatPhone(match);
+
+      if(/FAX|ファックス/i.test(line)){
+        if(!o.fax){
+          o.fax = val;
+        }
         continue;
       }
 
-      if(/携帯|Mobile|MOBILE|携帯電話/i.test(context)){
-        if(!o.mobile) o.mobile = val;
+      if(/携帯|Mobile|MOBILE|携帯電話/i.test(line)){
+        if(!o.mobile){
+          o.mobile = val;
+        }
         continue;
       }
 
-      if(/TEL|Tel|電話/i.test(context)){
-        if(!o.tel) o.tel = val;
+      /*
+       * 070 / 080 / 090 は携帯を優先
+       */
+      if(/^(070|080|090)-/.test(val)){
+        if(!o.mobile){
+          o.mobile = val;
+        }
         continue;
       }
 
-      phones.push(val);
+      if(/TEL|Tel|電話/i.test(line)){
+        if(!o.tel){
+          o.tel = val;
+        }
+        continue;
+      }
+
+      unlabeledPhones.push(val);
     }
   }
 
-  // ラベルが壊れていても070/080/090なら携帯電話を優先
-  for(let p of phones){
-    if(/^(070|080|090)/.test(p)){
-      if(!o.mobile) o.mobile = p;
-    }else{
-      if(!o.tel) o.tel = p;
+  for(const val of unlabeledPhones){
+
+    if(/^(070|080|090)-/.test(val)){
+      if(!o.mobile){
+        o.mobile = val;
+      }
+    }else if(!o.tel){
+      o.tel = val;
     }
   }
 
-  // TELとして読まれていても070/080/090なら携帯へ移す
-  if(o.tel && /^(070|080|090)/.test(o.tel) && !o.mobile){
-    o.mobile = o.tel;
-    o.tel = '';
-  }
+  /*
+   * 会社名
+   */
+  const companyRx =
+    /(株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|NPO法人|特定非営利活動法人)/;
 
-  // -------------------------
-  // 会社名
-  // -------------------------
-  let companyLine = lines.find(x=>
-    /(株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|NPO法人|特定非営利活動法人)/.test(x)
-  );
+  const companyLine = lines.find(x=>companyRx.test(x));
 
   if(companyLine){
-    o.company = companyLine
-      .replace(/^(会社名|Company)[:：\s]*/i,'')
+    o.company = cleanJapaneseLine(companyLine)
+      .replace(/^(会社名|Company)[:\s]*/i,'')
       .trim();
   }
 
-  // -------------------------
-  // 事業所名
-  // -------------------------
+  /*
+   * 事業所名
+   */
   let officeLine = lines.find(x=>
     /(事業所|営業所|支店|支社|センター|オフィス|Office)/i.test(x) &&
     x !== companyLine
   );
 
   if(officeLine){
-    o.office = officeLine.trim();
+
+    let office = cleanJapaneseLine(officeLine)
+      .replace(/\s+/g,'');
+
+    /*
+     * 「召労」が「就労」のOCR誤認の場合
+     */
+    office = office.replace(/^召労/,'就労');
+
+    o.office = office;
   }
 
-  // -------------------------
-  // 部署
-  // -------------------------
-  let dept = lines.find(x=>
+  /*
+   * 部署
+   */
+  const deptLine = lines.find(x=>
     /(事業部|営業部|総務部|管理部|IT部門|開発部|企画部|チーム|部|課|室|局)/.test(x) &&
-    !/(住所|会社名)/.test(x)
+    !/(住所|会社名)/.test(x) &&
+    !companyRx.test(x)
   );
 
-  if(dept){
-    o.department = dept.trim();
+  if(deptLine){
+    o.department = cleanJapaneseLine(deptLine);
   }
 
-  // -------------------------
-  // 役職
-  // -------------------------
-  let title = lines.find(x=>
+  /*
+   * 役職
+   */
+  const titleLine = lines.find(x=>
     /(代表取締役|取締役|代表社員|社長|副社長|専務|常務|部長|課長|係長|主任|所長|施設長|管理者|責任者|マネージャー|エンジニア|デザイナー)/.test(x)
   );
 
-  if(title){
-    o.title = title.trim();
+  if(titleLine){
+    o.title = cleanJapaneseLine(titleLine);
   }
 
-  // -------------------------
-  // 住所
-  // 都道府県、市区町村がある行を優先
-  // -------------------------
-  let addressLines = lines.filter(x=>
-    /(都|道|府|県).*(市|区|郡|町|村)/.test(x) &&
-    !/@|https?:|www\.|TEL|FAX|E-mail|メール/i.test(x)
-  );
+  /*
+   * 資格しか読み取れていない場合
+   */
+  if(!o.title){
 
-  if(addressLines.length){
-    o.address = addressLines.join(' ')
-      .replace(/〒?\s*\d{3}[\s\-ー―—−]*\d{4}/,'')
-      .replace(/[|｜{}\[\]]/g,'')
-      .replace(/\s+/g,' ')
-      .trim();
+    const qualification = lines.find(x=>
+      /(社会\s*福祉\s*士|精神\s*保健\s*福祉\s*士|保育\s*士)/.test(x)
+    );
+
+    if(qualification){
+      o.title = cleanJapaneseLine(qualification);
+    }
   }
 
-  // -------------------------
-  // 氏名候補
-  // -------------------------
-  const bad = /(株式会社|有限会社|合同会社|法人|事業所|営業所|支店|支社|センター|部|課|室|代表|取締役|社長|部長|課長|主任|TEL|FAX|電話|携帯|Mail|E-mail|http|www|〒|社会福祉士|精神保健福祉士|保育士)/i;
+  /*
+   * 住所
+   */
+  const addressLine = lines.find(x=>{
 
-  let candidates = lines.filter(x=>
-    !bad.test(x) &&
-    !/(都|道|府|県).*(市|区|郡|町|村)/.test(x) &&
-    !/@/.test(x) &&
-    !/\d{3,}/.test(x)
-  );
+    const c = x.replace(/\s+/g,'');
 
-  // 日本語氏名
-  let nameLine = candidates.find(x=>{
-    let s = x.replace(/\s/g,'');
-    return /^[一-龠々ぁ-んァ-ヶー]{2,12}$/.test(s);
+    return (
+      /(都|道|府|県).*(市|区|郡|町|村)/.test(c) &&
+      !/@|https?:|www\.|TEL|FAX|E-mail|メール/i.test(x)
+    );
   });
-// 日本語氏名
-// ひらがなだけの行（ふりがな）を氏名として選ばない
-// OCRで氏名の前後に英字や記号が混ざった場合にも対応
-let nameLine = null;
-// 「Name」「Nme」などの直後にある日本語氏名を最優先
-for(let x of lines){
-  if(/\b(?:Name|Nme)\b/i.test(x)){
-    let n = x
-      .replace(/^.*?\b(?:Name|Nme)\b[:：\s_-]*/i,'')
-      .replace(/[^一-龠々ぁ-んァ-ヶー\s]/g,' ')
-      .replace(/\s+/g,' ')
+
+  if(addressLine){
+
+    let addr = cleanJapaneseLine(addressLine);
+
+    addr = addr
+      .replace(
+        /^[〒¥￥TＴ]?\s*\d{3,4}\s*-\s*\d{4}\s*/i,
+        ''
+      )
+      .replace(/\s*([0-9]+)\s*丁目\s*/g,'$1丁目')
+      .replace(/\s*-\s*/g,'-')
+      .replace(/\s+/g,'')
+      .replace(/[=]+$/g,'')
       .trim();
 
-    if(/[一-龠々]{2,}/.test(n)){
-      nameLine = n;
+    o.address = addr;
+  }
+
+  /*
+   * ふりがな
+   *
+   * ひらがなが中心の短い行を候補にする
+   */
+  const kanaLine = lines.find(x=>{
+
+    const s = x
+      .replace(/\s+/g,'')
+      .replace(/[・･]/g,'');
+
+    if(
+      /会社|事業|支援|福祉|住所|電話|メール/.test(s)
+    ){
+      return false;
+    }
+
+    return /^[ぁ-んー]{4,24}$/.test(s);
+  });
+
+  if(kanaLine){
+    o.kana = kanaLine.replace(/\s+/g,'');
+  }
+
+  /*
+   * 氏名
+   *
+   * OCR例：
+   * |_Nme 福島 健司
+   * Name 福島 健司
+   *
+   * Name / Nme が付いている行を最優先
+   */
+  let nameLine = '';
+
+  for(const line of lines){
+
+    if(/(?:Name|Nme)/i.test(line)){
+
+      let n = line
+        .replace(
+          /^.*?(?:Name|Nme)\s*[:：_-]*/i,
+          ''
+        )
+        .replace(
+          /[^一-龠々ぁ-んァ-ヶー\s]/g,
+          ' '
+        )
+        .replace(/\s+/g,' ')
+        .trim();
+
+      const kanjiCount =
+        (n.match(/[一-龠々]/g) || []).length;
+
+      if(
+        kanjiCount >= 2 &&
+        n.replace(/\s/g,'').length <= 10
+      ){
+        nameLine = n;
+        break;
+      }
+    }
+  }
+
+  /*
+   * Name/Nmeが見つからない場合の候補
+   */
+  if(!nameLine){
+
+    const badNameRx =
+      /(株式会社|有限会社|合同会社|法人|事業所|営業所|支店|支社|センター|代表|取締役|社長|部長|課長|主任|TEL|FAX|電話|携帯|Mail|E-mail|http|www|〒|社会福祉士|精神保健福祉士|保育士|支援|福祉)/i;
+
+    for(const line of lines){
+
+      if(badNameRx.test(line)){
+        continue;
+      }
+
+      if(
+        /(都|道|府|県).*(市|区|郡|町|村)/
+          .test(line.replace(/\s+/g,''))
+      ){
+        continue;
+      }
+
+      if(/@|\d{3,}/.test(line)){
+        continue;
+      }
+
+      const cleaned = line
+        .replace(/[A-Za-z0-9]/g,' ')
+        .replace(
+          /[^一-龠々ぁ-んァ-ヶー\s]/g,
+          ' '
+        )
+        .replace(/\s+/g,' ')
+        .trim();
+
+      const noSpace = cleaned.replace(/\s/g,'');
+
+      const kanjiCount =
+        (noSpace.match(/[一-龠々]/g) || []).length;
+
+      if(
+        kanjiCount >= 2 &&
+        noSpace.length >= 2 &&
+        noSpace.length <= 8
+      ){
+        nameLine = cleaned;
+        break;
+      }
+    }
+  }
+
+  if(nameLine){
+    o.name = nameLine;
+  }
+
+  /*
+   * 英字氏名
+   *
+   * OCRでロゴ・事業所名を拾いやすいため、
+   * Name表記がある場合だけ優先的に設定
+   */
+  for(const line of lines){
+
+    const m = line.match(
+      /(?:Name)\s*[:：_-]*\s*([A-Za-z][A-Za-z .'-]{2,35})/i
+    );
+
+    if(m && m[1].trim().split(/\s+/).length >= 2){
+      o.roman = m[1].trim();
       break;
     }
   }
-}
-    if(!nameLine){
-for(let x of candidates){
-  let cleaned = x
-    .replace(/[A-Za-z0-9]/g,' ')
-    .replace(/[^一-龠々ぁ-んァ-ヶー\s]/g,' ')
-    .replace(/\s+/g,' ')
-    .trim();
-
-  let noSpace = cleaned.replace(/\s/g,'');
-  let kanjiCount = (noSpace.match(/[一-龠々]/g) || []).length;
-
-  // 漢字を2文字以上含む短い行を氏名として優先
-  if(
-    kanjiCount >= 2 &&
-    noSpace.length >= 2 &&
-    noSpace.length <= 8
-  ){
-    nameLine = cleaned;
-    break;
-  }
-}
-}
-if(nameLine){
-  o.name = nameLine;
-}
-  if(nameLine){
-    o.name = nameLine.replace(/\s+/g,' ').trim();
-  }
-
-  // -------------------------
-  // 英字氏名
-  // -------------------------
-  let roman = candidates.find(x=>
-    /^[A-Za-z][A-Za-z .'-]{2,35}$/.test(x) &&
-    x.split(/\s+/).length >= 2
-  );
-
-  if(roman){
-    o.roman = roman.trim();
-  }
 
   return o;
 }
-function parseCardText(text){
-  let t = normalizeText(text);
-  let lines = t.split('\n').map(x=>x.trim()).filter(Boolean);
-  let o = {
-    date:new Date().toISOString().slice(0,10),
-    status:'未対応'
-  };
 
-  // メールアドレス
-  // OCRで E-mail: の後ろに空白が混ざっても拾う
-  let emailLine = lines.find(x=>/e[\s-]*mail|メール/i.test(x));
-  if(emailLine){
-    let cleaned = emailLine
-      .replace(/e[\s-]*mail\s*[:：]?\s*/i,'')
-      .replace(/\s+/g,'');
-    let m = cleaned.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-    if(m) o.email = m[0];
-  }
-  if(!o.email){
-    let compact = t.replace(/\s+/g,'');
-    let m = compact.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-    if(m) o.email = m[0];
-  }
-
-  // Webサイト
-  o.web = firstMatch(
-    t,
-    /((?:https?:\/\/)?(?:www\.)?[a-z0-9][a-z0-9.-]+\.(?:jp|com|net|org|co\.jp)(?:\/\S*)?)/i
-  );
-
-  // 郵便番号
-  // 〒800-0077、〒8002-0077 のようなOCR揺れにも対応
-  let zipLine = lines.find(x=>/〒|郵便/.test(x));
-  if(zipLine){
-    let digits = zipLine.replace(/[^\d]/g,'');
-    if(digits.length >= 7){
-      digits = digits.slice(0,7);
-      o.zip = digits.slice(0,3) + '-' + digits.slice(3);
-    }
-  }
-
-  // 電話番号：ラベルを最優先
-  const phoneRx = /0\d{1,4}[-ー―‐\s]\d{1,4}[-ー―‐\s]\d{3,4}/g;
-
-  for(const line of lines){
-    let matches = line.match(phoneRx);
-    if(!matches) continue;
-
-    for(let val of matches){
-      val = val.replace(/[ー―‐\s]/g,'-');
-
-      if(/FAX|ファックス/i.test(line)){
-        if(!o.fax) o.fax = val;
-        continue;
-      }
-
-      if(/携帯|Mobile|MOBILE|携帯電話/i.test(line)){
-        if(!o.mobile) o.mobile = val;
-        continue;
-      }
-
-      // TEL: と明記されている場合は070でもTELへ入れる
-      if(/TEL|Tel|電話/i.test(line)){
-        if(!o.tel) o.tel = val;
-        continue;
-      }
-
-      // ラベルが無い場合だけ070/080/090を携帯扱い
-      if(/^0(?:70|80|90)-/.test(val)){
-        if(!o.mobile) o.mobile = val;
-      }else{
-        if(!o.tel) o.tel = val;
-      }
-    }
-  }
-
-  // 会社名
-  let companyLine = lines.find(x=>
-    /(株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|NPO法人|特定非営利活動法人)/.test(x)
-  );
-  if(companyLine){
-    o.company = companyLine
-      .replace(/^(会社名|Company)[:：\s]*/i,'')
-      .trim();
-  }
-
-  // 事業所名
-  let officeLine = lines.find(x=>
-    /(事業所|営業所|支店|支社|センター|オフィス|Office)/i.test(x) &&
-    x !== companyLine
-  );
-  if(officeLine) o.office = officeLine.trim();
-
-  // 部署
-  let dept = lines.find(x=>
-    /(事業部|営業部|総務部|管理部|IT部門|開発部|企画部|チーム|部|課|室|局)/.test(x) &&
-    !/(住所|会社名)/.test(x)
-  );
-  if(dept) o.department = dept.trim();
-
-  // 役職
-  let title = lines.find(x=>
-    /(代表取締役|取締役|代表社員|社長|副社長|専務|常務|部長|課長|係長|主任|所長|施設長|管理者|責任者|マネージャー|エンジニア|デザイナー)/.test(x)
-  );
-  if(title) o.title = title.trim();
-
-  // 住所
-  let addrLines = lines.filter(x=>
-    /(都|道|府|県).*(市|区|郡|町|村)/.test(x) &&
-    !/@|https?:|www\.|TEL|FAX/i.test(x)
-  );
-  if(addrLines.length){
-    o.address = addrLines.join(' ')
-      .replace(/〒?\s*\d{3}[-ー―‐\s]?\d{4}/,'')
-      .trim();
-  }
-
-  // 氏名候補
-  const bad = /(株式会社|有限会社|合同会社|法人|事業所|営業所|支店|支社|センター|部|課|室|代表|取締役|社長|部長|課長|主任|TEL|FAX|電話|携帯|Mail|E-mail|@|http|www|〒|\d{2,})/i;
-
-  let candidates = lines.filter(x=>
-    !bad.test(x) &&
-    !/(都|道|府|県).*(市|区|郡|町|村)/.test(x)
-  );
-
-  let nameLine = candidates.find(x=>{
-    let s=x.replace(/\s/g,'');
-    return /^[一-龠々ぁ-んァ-ヶー]{2,10}$/.test(s);
-  });
-
-  if(nameLine){
-    o.name = nameLine.replace(/\s+/g,' ').trim();
-  }
-
-  // 英字氏名
-  let roman = candidates.find(x=>
-    /^[A-Za-z][A-Za-z .'-]{2,35}$/.test(x) &&
-    x.split(/\s+/).length >= 2
-  );
-  if(roman) o.roman = roman.trim();
-
-  return o;
-}
-  function parseAndFill(text){
+function parseAndFill(text){
   const data = parseCardText(text);
   fill(data);
   return data;
 }
+
 function loadImage(src){
-  return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=src})
-}
-async function makeProcessed(angle=0){
-  const im=await loadImage(preview.src);
-  const rad=((angle%360)+360)%360;
-  const swap=rad===90||rad===270;
-  const maxSide=2200;
-  let scale=Math.min(2.2,maxSide/Math.max(im.naturalWidth,im.naturalHeight));
-  scale=Math.max(1,scale);
-  let sw=Math.round(im.naturalWidth*scale), sh=Math.round(im.naturalHeight*scale);
-  const c=document.getElementById('workCanvas');
-  c.width=swap?sh:sw; c.height=swap?sw:sh;
-  const ctx=c.getContext('2d',{willReadFrequently:true});
-  ctx.save(); ctx.translate(c.width/2,c.height/2); ctx.rotate(rad*Math.PI/180);
-  ctx.drawImage(im,-sw/2,-sh/2,sw,sh); ctx.restore();
-  let img=ctx.getImageData(0,0,c.width,c.height), d=img.data;
-  // grayscale + contrast. Keep dark text strong while whitening the background.
-  for(let i=0;i<d.length;i+=4){
-    let g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-    g=(g-128)*1.35+128;
-    g=Math.max(0,Math.min(255,g));
-    if(g>225) g=255;
-    d[i]=d[i+1]=d[i+2]=g;
-  }
-  ctx.putImageData(img,0,0);
-  return c.toDataURL('image/jpeg',0.94);
-}
-async function manualRotate(delta){
-  manualAngle=(manualAngle+delta+360)%360;
-  const p=await makeProcessed(manualAngle);
-  preview.src=p;
-  selectedFile=null;
-  manualAngle=0;
-  rawOcr.value=''; fill({date:new Date().toISOString().slice(0,10),status:'未対応'});
-  ocrStatus.textContent='画像を回転しました。もう一度「無料OCRで読み取る」を押してください。';
-}
-function usefulScore(r){
-  const txt=(r.data.text||'').trim();
-  const chars=(txt.match(/[A-Za-z0-9一-龯ぁ-んァ-ヶ]/g)||[]).length;
-  const contacts=(txt.match(/@|TEL|FAX|〒|\d{2,4}[-ー]\d{2,4}/gi)||[]).length;
-  return (r.data.confidence||0) + Math.min(chars,80)*0.35 + contacts*8;
-}
-async function runOCR(){
-  if(!preview.src){alert('先に名刺画像を選択してください');return}
-  if(typeof Tesseract==='undefined'){alert('OCRライブラリを読み込めません。インターネット接続を確認してください。');return}
-  ocrBtn.disabled=true;ocrBar.style.width='2%';rawOcr.value='';
-  ocrStatus.textContent='画像を補正してOCRを準備しています…';
-  try{
-    const worker=await Tesseract.createWorker('jpn+eng',1,{logger:m=>{
-      if(m.progress!=null){let p=Math.round(m.progress*100);ocrBar.style.width=p+'%';ocrStatus.textContent=(m.status||'OCR処理中')+' '+p+'%'}
-    }});
-    let candidates=[];
-    // First: current orientation.
-    let img0=await makeProcessed(0);
-    let r0=await worker.recognize(img0);
-    candidates.push({angle:0,r:r0,score:usefulScore(r0)});
-    // If recognition is weak, automatically test right and left 90 degrees.
-    if((r0.data.confidence||0)<65 || (r0.data.text||'').trim().length<25){
-      ocrStatus.textContent='向きを変えて再判定しています…';
-      for(const a of [90,270]){
-        let imga=await makeProcessed(a);
-        let rr=await worker.recognize(imga);
-        candidates.push({angle:a,r:rr,score:usefulScore(rr)});
-      }
-    }
-    await worker.terminate();
-    candidates.sort((a,b)=>b.score-a.score);
-    const best=candidates[0];
-    rawOcr.value=best.r.data.text||'';
-    ocrBar.style.width='100%';
-    if(!rawOcr.value.trim() || (best.r.data.confidence||0)<25){
-      fill({date:new Date().toISOString().slice(0,10),status:'未対応'});
-      ocrStatus.textContent='十分に読み取れませんでした。名刺を画面いっぱいに撮影するか、左右90°ボタンで向きを直して再度お試しください。';
-      return;
-    }
-    parseAndFill(rawOcr.value);
-    ocrStatus.textContent=`OCR完了（自動判定角度 ${best.angle}° / 信頼度 ${Math.round(best.r.data.confidence||0)}%）。内容を確認・修正してください。`;
-  }catch(e){
-    console.error(e);
-    ocrStatus.textContent='OCRでエラーが発生しました。通信状態を確認して、もう一度お試しください。';
-    alert('OCRに失敗しました: '+e.message);
-  }finally{ocrBtn.disabled=false}
+
+  return new Promise((resolve,reject)=>{
+
+    const im = new Image();
+
+    im.onload = ()=>resolve(im);
+    im.onerror = reject;
+    im.src = src;
+  });
 }
 
-function save(){let o={id:Date.now(),image:preview.src};defs.forEach(([id])=>o[id]=document.getElementById(id).value);let a=JSON.parse(localStorage.getItem('epoCards')||'[]');a.unshift(o);localStorage.setItem('epoCards',JSON.stringify(a));alert('登録しました');show('list');render()}
-function clearForm(){fill({});preview.classList.add('hidden');ocrBox.classList.add('hidden');rawOcr.value='';ocrBar.style.width='0%'}
-function render(){let a=JSON.parse(localStorage.getItem('epoCards')||'[]'),s=(q.value||'').toLowerCase();a=a.filter(x=>[x.company,x.name,x.tel,x.email].join(' ').toLowerCase().includes(s));rows.innerHTML=a.map(x=>`<tr><td>${esc(x.company)}</td><td>${esc(x.name)}</td><td>${esc(x.tel)}</td><td>${esc(x.email)}</td><td><span class="badge">${esc(x.status)}</span></td><td><button onclick="del(${x.id})">削除</button></td></tr>`).join('')||'<tr><td colspan="6" class="muted">登録データはありません</td></tr>'}
-function del(id){if(!confirm('削除しますか？'))return;let a=JSON.parse(localStorage.getItem('epoCards')||'[]').filter(x=>x.id!==id);localStorage.setItem('epoCards',JSON.stringify(a));render()}
-function exportCSV(){let a=JSON.parse(localStorage.getItem('epoCards')||'[]');let h=defs.map(x=>x[1]),keys=defs.map(x=>x[0]);let csv='\ufeff'+h.join(',')+'\n'+a.map(o=>keys.map(k=>'"'+String(o[k]||'').replaceAll('"','""')+'"').join(',')).join('\n');let b=new Blob([csv],{type:'text/csv'}),u=URL.createObjectURL(b),ael=document.createElement('a');ael.href=u;ael.download='EPO名刺管理.csv';ael.click();URL.revokeObjectURL(u)}
-function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function show(v){document.querySelectorAll('main>section').forEach(x=>x.classList.add('hidden'));document.getElementById(v).classList.remove('hidden');document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));if(v==='list')render()}
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.v));
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
+async function makeProcessed(angle=0){
+
+  const im = await loadImage(preview.src);
+
+  const rad = ((angle % 360) + 360) % 360;
+
+  const swap =
+    rad === 90 ||
+    rad === 270;
+
+  const maxSide = 2200;
+
+  let scale =
+    Math.min(
+      2.2,
+      maxSide /
+      Math.max(
+        im.naturalWidth,
+        im.naturalHeight
+      )
+    );
+
+  scale = Math.max(1,scale);
+
+  const sw =
+    Math.round(im.naturalWidth * scale);
+
+  const sh =
+    Math.round(im.naturalHeight * scale);
+
+  const c =
+    document.getElementById('workCanvas');
+
+  c.width = swap ? sh : sw;
+  c.height = swap ? sw : sh;
+
+  const ctx =
+    c.getContext(
+      '2d',
+      {willReadFrequently:true}
+    );
+
+  ctx.save();
+
+  ctx.translate(
+    c.width / 2,
+    c.height / 2
+  );
+
+  ctx.rotate(
+    rad * Math.PI / 180
+  );
+
+  ctx.drawImage(
+    im,
+    -sw / 2,
+    -sh / 2,
+    sw,
+    sh
+  );
+
+  ctx.restore();
+
+  const img =
+    ctx.getImageData(
+      0,
+      0,
+      c.width,
+      c.height
+    );
+
+  const d = img.data;
+
+  /*
+   * グレースケール＋コントラスト補正
+   */
+  for(let i=0;i<d.length;i+=4){
+
+    let g =
+      0.299 * d[i] +
+      0.587 * d[i+1] +
+      0.114 * d[i+2];
+
+    g = (g - 128) * 1.35 + 128;
+
+    g = Math.max(
+      0,
+      Math.min(255,g)
+    );
+
+    if(g > 225){
+      g = 255;
+    }
+
+    d[i] =
+    d[i+1] =
+    d[i+2] = g;
+  }
+
+  ctx.putImageData(img,0,0);
+
+  return c.toDataURL(
+    'image/jpeg',
+    0.94
+  );
 }
-</script></body></html>
+
+async function manualRotate(delta){
+
+  try{
+
+    manualAngle =
+      (manualAngle + delta + 360) % 360;
+
+    const p =
+      await makeProcessed(manualAngle);
+
+    preview.src = p;
+
+    selectedFile = null;
+    manualAngle = 0;
+
+    rawOcr.value = '';
+
+    fill({
+      date:today(),
+      status:'未対応'
+    });
+
+    ocrStatus.textContent =
+      '画像を回転しました。もう一度「無料OCRで読み取る」を押してください。';
+
+  }catch(e){
+
+    console.error(e);
+
+    alert(
+      '画像の回転に失敗しました: ' +
+      e.message
+    );
+  }
+}
+
+function usefulScore(r){
+
+  const txt =
+    (r.data.text || '').trim();
+
+  const chars =
+    (
+      txt.match(
+        /[A-Za-z0-9一-龯ぁ-んァ-ヶ]/g
+      ) || []
+    ).length;
+
+  const contacts =
+    (
+      txt.match(
+        /@|TEL|FAX|〒|\d{2,4}[-ー]\d{2,4}/gi
+      ) || []
+    ).length;
+
+  return (
+    (r.data.confidence || 0) +
+    Math.min(chars,80) * 0.35 +
+    contacts * 8
+  );
+}
+
+async function runOCR(){
+
+  if(!preview.src){
+
+    alert(
+      '先に名刺画像を選択してください'
+    );
+
+    return;
+  }
+
+  if(typeof Tesseract === 'undefined'){
+
+    alert(
+      'OCRライブラリを読み込めません。インターネット接続を確認してください。'
+    );
+
+    return;
+  }
+
+  ocrBtn.disabled = true;
+  ocrBar.style.width = '2%';
+  rawOcr.value = '';
+
+  ocrStatus.textContent =
+    '画像を補正してOCRを準備しています…';
+
+  let worker = null;
+
+  try{
+
+    worker =
+      await Tesseract.createWorker(
+        'jpn+eng',
+        1,
+        {
+          logger:m=>{
+
+            if(m.progress != null){
+
+              const p =
+                Math.round(
+                  m.progress * 100
+                );
+
+              ocrBar.style.width =
+                p + '%';
+
+              ocrStatus.textContent =
+                (m.status || 'OCR処理中') +
+                ' ' +
+                p +
+                '%';
+            }
+          }
+        }
+      );
+
+    const results = [];
+
+    /*
+     * 現在の向き
+     */
+    const img0 =
+      await makeProcessed(0);
+
+    const r0 =
+      await worker.recognize(img0);
+
+    results.push({
+      angle:0,
+      r:r0,
+      score:usefulScore(r0)
+    });
+
+    /*
+     * 読み取りが弱ければ
+     * 左右90度も試す
+     */
+    if(
+      (r0.data.confidence || 0) < 65 ||
+      (r0.data.text || '').trim().length < 25
+    ){
+
+      ocrStatus.textContent =
+        '向きを変えて再判定しています…';
+
+      for(const a of [90,270]){
+
+        const imga =
+          await makeProcessed(a);
+
+        const rr =
+          await worker.recognize(imga);
+
+        results.push({
+          angle:a,
+          r:rr,
+          score:usefulScore(rr)
+        });
+      }
+    }
+
+    results.sort(
+      (a,b)=>b.score-a.score
+    );
+
+    const best = results[0];
+
+    rawOcr.value =
+      best.r.data.text || '';
+
+    ocrBar.style.width =
+      '100%';
+
+    if(
+      !rawOcr.value.trim() ||
+      (best.r.data.confidence || 0) < 25
+    ){
+
+      fill({
+        date:today(),
+        status:'未対応'
+      });
+
+      ocrStatus.textContent =
+        '十分に読み取れませんでした。名刺を画面いっぱいに撮影するか、左右90°ボタンで向きを直して再度お試しください。';
+
+      return;
+    }
+
+    parseAndFill(
+      rawOcr.value
+    );
+
+    ocrStatus.textContent =
+      `OCR完了（自動判定角度 ${best.angle}° / 信頼度 ${Math.round(best.r.data.confidence || 0)}%）。内容を確認・修正してください。`;
+
+  }catch(e){
+
+    console.error(e);
+
+    ocrStatus.textContent =
+      'OCRでエラーが発生しました。通信状態を確認して、もう一度お試しください。';
+
+    alert(
+      'OCRに失敗しました: ' +
+      e.message
+    );
+
+  }finally{
+
+    if(worker){
+      try{
+        await worker.terminate();
+      }catch(e){
+        console.warn(e);
+      }
+    }
+
+    ocrBtn.disabled = false;
+  }
+}
+
+function save(){
+
+  const o = {
+    id:Date.now(),
+    image:preview.src
+  };
+
+  defs.forEach(([id])=>{
+
+    const el =
+      document.getElementById(id);
+
+    o[id] =
+      el ? el.value : '';
+  });
+
+  const a =
+    JSON.parse(
+      localStorage.getItem('epoCards') || '[]'
+    );
+
+  a.unshift(o);
+
+  localStorage.setItem(
+    'epoCards',
+    JSON.stringify(a)
+  );
+
+  alert('登録しました');
+
+  show('list');
+  render();
+}
+
+function clearForm(){
+
+  fill({});
+
+  preview.removeAttribute('src');
+  preview.classList.add('hidden');
+
+  ocrBox.classList.add('hidden');
+  formCard.classList.add('hidden');
+
+  rawOcr.value = '';
+  ocrBar.style.width = '0%';
+
+  selectedFile = null;
+  manualAngle = 0;
+
+  fileInput.value = '';
+}
+
+function render(){
+
+  let a =
+    JSON.parse(
+      localStorage.getItem('epoCards') || '[]'
+    );
+
+  const s =
+    (q.value || '').toLowerCase();
+
+  a = a.filter(x=>
+    [
+      x.company,
+      x.name,
+      x.tel,
+      x.mobile,
+      x.email
+    ]
+    .join(' ')
+    .toLowerCase()
+    .includes(s)
+  );
+
+  rows.innerHTML =
+    a.map(x=>
+      `<tr>
+        <td>${esc(x.company)}</td>
+        <td>${esc(x.name)}</td>
+        <td>${esc(x.tel || x.mobile)}</td>
+        <td>${esc(x.email)}</td>
+        <td>
+          <span class="badge">
+            ${esc(x.status)}
+          </span>
+        </td>
+        <td>
+          <button
+            type="button"
+            onclick="del(${x.id})">
+            削除
+          </button>
+        </td>
+      </tr>`
+    ).join('') ||
+    '<tr><td colspan="6" class="muted">登録データはありません</td></tr>';
+}
+
+function del(id){
+
+  if(!confirm('削除しますか？')){
+    return;
+  }
+
+  let a =
+    JSON.parse(
+      localStorage.getItem('epoCards') || '[]'
+    );
+
+  a = a.filter(
+    x=>x.id !== id
+  );
+
+  localStorage.setItem(
+    'epoCards',
+    JSON.stringify(a)
+  );
+
+  render();
+}
+
+function exportCSV(){
+
+  const a =
+    JSON.parse(
+      localStorage.getItem('epoCards') || '[]'
+    );
+
+  const headers =
+    defs.map(x=>x[1]);
+
+  const keys =
+    defs.map(x=>x[0]);
+
+  const csv =
+    '\ufeff' +
+    headers.join(',') +
+    '\n' +
+    a.map(o=>
+      keys.map(k=>
+        '"' +
+        String(o[k] || '')
+          .replaceAll('"','""') +
+        '"'
+      ).join(',')
+    ).join('\n');
+
+  const blob =
+    new Blob(
+      [csv],
+      {type:'text/csv'}
+    );
+
+  const url =
+    URL.createObjectURL(blob);
+
+  const ael =
+    document.createElement('a');
+
+  ael.href = url;
+  ael.download =
+    'EPO名刺管理.csv';
+
+  ael.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function esc(s){
+
+  return String(s || '')
+    .replace(
+      /[&<>"']/g,
+      m=>({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#39;'
+      }[m])
+    );
+}
+
+function show(v){
+
+  document
+    .querySelectorAll('main>section')
+    .forEach(x=>
+      x.classList.add('hidden')
+    );
+
+  const section =
+    document.getElementById(v);
+
+  if(section){
+    section.classList.remove('hidden');
+  }
+
+  document
+    .querySelectorAll('.tabs button')
+    .forEach(x=>
+      x.classList.toggle(
+        'on',
+        x.dataset.v === v
+      )
+    );
+
+  if(v === 'list'){
+    render();
+  }
+}
+
+/*
+ * ボタンイベント
+ */
+document
+  .querySelectorAll('.tabs button')
+  .forEach(b=>{
+    b.addEventListener(
+      'click',
+      ()=>show(b.dataset.v)
+    );
+  });
+
+ocrBtn.addEventListener(
+  'click',
+  runOCR
+);
+
+document
+  .getElementById('leftBtn')
+  .addEventListener(
+    'click',
+    ()=>manualRotate(-90)
+  );
+
+document
+  .getElementById('rightBtn')
+  .addEventListener(
+    'click',
+    ()=>manualRotate(90)
+  );
+
+document
+  .getElementById('reparseBtn')
+  .addEventListener(
+    'click',
+    ()=>parseAndFill(rawOcr.value)
+  );
+
+document
+  .getElementById('saveBtn')
+  .addEventListener(
+    'click',
+    save
+  );
+
+document
+  .getElementById('clearBtn')
+  .addEventListener(
+    'click',
+    clearForm
+  );
+
+document
+  .getElementById('csvBtn')
+  .addEventListener(
+    'click',
+    exportCSV
+  );
+
+q.addEventListener(
+  'input',
+  render
+);
+
+/*
+ * 古いService Workerのキャッシュを解除
+ */
+if('serviceWorker' in navigator){
+
+  navigator.serviceWorker
+    .getRegistrations()
+    .then(rs=>
+      rs.forEach(r=>
+        r.unregister()
+      )
+    )
+    .catch(()=>{});
+}
+
+</script>
+
+</body>
+</html>

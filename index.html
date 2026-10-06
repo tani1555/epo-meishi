@@ -215,7 +215,35 @@ function firstMatch(t,re){let m=t.match(re);return m?m[1].trim():''}
     let s = x.replace(/\s/g,'');
     return /^[一-龠々ぁ-んァ-ヶー]{2,12}$/.test(s);
   });
+// 日本語氏名
+// ひらがなだけの行（ふりがな）を氏名として選ばない
+// OCRで氏名の前後に英字や記号が混ざった場合にも対応
+let nameLine = null;
 
+for(let x of candidates){
+  let cleaned = x
+    .replace(/[A-Za-z0-9]/g,' ')
+    .replace(/[^一-龠々ぁ-んァ-ヶー\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+
+  let noSpace = cleaned.replace(/\s/g,'');
+  let kanjiCount = (noSpace.match(/[一-龠々]/g) || []).length;
+
+  // 漢字を2文字以上含む短い行を氏名として優先
+  if(
+    kanjiCount >= 2 &&
+    noSpace.length >= 2 &&
+    noSpace.length <= 8
+  ){
+    nameLine = cleaned;
+    break;
+  }
+}
+
+if(nameLine){
+  o.name = nameLine;
+}
   if(nameLine){
     o.name = nameLine.replace(/\s+/g,' ').trim();
   }

@@ -1,6 +1,6 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EPO 名刺管理 OCR版</title><script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script><link rel="manifest" href="manifest.json"><style>
 :root{--b:#0969da;--bg:#f5f7fb;--bd:#d8dee8;--tx:#172033}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;background:var(--bg);color:var(--tx)}header{background:#fff;border-bottom:1px solid var(--bd);padding:14px 18px;font-weight:800;color:#064b9a;position:sticky;top:0}main{max-width:1000px;margin:auto;padding:18px}.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.tabs button,.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}.tabs button{background:#e9eef6}.tabs button.on,.btn{background:var(--b);color:white}.card{background:white;border:1px solid var(--bd);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 3px 12px #0000000a}.hero{text-align:center;padding:28px}.camera{font-size:20px;padding:18px 26px}.preview{max-width:310px;width:100%;border-radius:10px;margin:12px auto;display:block}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}label{font-size:12px;font-weight:700;color:#536176}input,select,textarea{width:100%;padding:10px;border:1px solid #cbd4e1;border-radius:8px;margin-top:5px;font:inherit}textarea{min-height:90px}.full{grid-column:1/-1}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.secondary{background:#e8eef7;color:#17355d}.danger{background:#b42318}.hidden{display:none}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #e5e9f0;font-size:14px}.muted{color:#687386;font-size:13px}.badge{background:#dbeafe;color:#0756a8;border-radius:999px;padding:3px 8px;font-size:12px}@media(max-width:650px){.grid{grid-template-columns:1fr}.full{grid-column:auto}table{display:block;overflow:auto}.camera{width:100%;font-size:22px;padding:22px}}
-</style></head><body><header>💳 EPO 名刺管理 <span class="muted">無料OCR版 v4</span></header><main><div class="muted" style="text-align:right;margin-bottom:8px">Version 4.0</div>
+</style></head><body><header>💳 EPO 名刺管理 <span class="muted">無料OCR版 v5</span></header><main><div class="muted" style="text-align:right;margin-bottom:8px">Version 5.0</div>
 <div class="tabs"><button class="on" data-v="scan">名刺を読み取る</button><button data-v="list">顧客一覧</button></div>
 <section id="scan">
 <div class="card hero"><h2>名刺を撮影・選択</h2><p class="muted">スマホではカメラが起動します。PCでは画像ファイルを選択できます。</p><input id="file" type="file" accept="image/*" capture="environment" hidden><button class="btn camera" onclick="file.click()">📷 名刺を撮影</button><img id="preview" class="preview hidden"></div>
@@ -9,7 +9,7 @@
 <button class="btn secondary" onclick="manualRotate(-90)">↶ 左90°</button>
 <button class="btn secondary" onclick="manualRotate(90)">↷ 右90°</button>
 </div>
-<p class="muted">v4では画像を拡大・グレースケール・コントラスト補正し、認識が弱い場合は向きを変えて再判定します。</p>
+<p class="muted">v5では画像補正・向き判定に加え、日本の名刺向けに会社名・氏名・郵便番号・住所・TEL・FAX・携帯・メール・Webの振り分けを強化しています。</p>
 <canvas id="workCanvas" class="hidden"></canvas><details style="margin-top:12px"><summary>OCR原文を確認</summary><textarea id="rawOcr" style="width:100%;min-height:160px"></textarea><button class="btn secondary" onclick="parseAndFill(rawOcr.value)">原文から項目を再判定</button></details></div>
 <div id="formCard" class="card hidden"><h2>読み取り結果の確認</h2><p class="muted">OCR結果は誤認識する場合があります。登録前に必ず内容を確認・修正してください。</p><div class="grid" id="fields"></div><div class="actions"><button class="btn" onclick="save()">この内容で登録</button><button class="btn secondary" onclick="clearForm()">クリア</button></div></div>
 </section>
@@ -24,65 +24,67 @@ file.onchange=e=>{let f=e.target.files[0];if(!f)return;selectedFile=f;manualAngl
 function normalizeText(t){return String(t||'').replace(/\r/g,'').replace(/[：]/g,':').replace(/[‐‑‒–—―ー]/g,'-').replace(/＠/g,'@').replace(/[．。]/g,'.').replace(/\u3000/g,' ').trim()}
 function firstMatch(t,re){let m=t.match(re);return m?m[1].trim():''}
 function parseCardText(text){
-  let t=normalizeText(text), lines=t.split('\n').map(x=>x.trim()).filter(Boolean), o={date:new Date().toISOString().slice(0,10),status:'未対応'};
+  let t=normalizeText(text), lines=t.split('\n').map(x=>x.trim()).filter(Boolean);
+  let o={date:new Date().toISOString().slice(0,10),status:'未対応'};
+
+  // Email / web
   o.email=firstMatch(t,/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i);
-  o.web=firstMatch(t,/((?:https?:\/\/|www\.)[^\s]+)/i);
-  o.zip=firstMatch(t,/(?:〒\s*)?(\d{3}\s*-\s*\d{4})/); if(o.zip)o.zip=o.zip.replace(/\s/g,'');
-  o.fax=firstMatch(t,/(?:FAX|Fax|fax)\s*[:：]?\s*([0-9()\-\s]{9,})/); if(o.fax)o.fax=o.fax.replace(/\s/g,'');
-  o.tel=firstMatch(t,/(?:TEL|Tel|tel|電話)\s*[:：]?\s*([0-9()\-\s]{9,})/); if(o.tel)o.tel=o.tel.replace(/\s/g,'');
-  o.mobile=firstMatch(t,/(?:携帯|Mobile|MOBILE)\s*[:：]?\s*([0-9()\-\s]{10,})/i); if(o.mobile)o.mobile=o.mobile.replace(/\s/g,'');
-  let company=lines.find(x=>/(株式会社|有限会社|合同会社|合資会社|一般社団法人|社会福祉法人|医療法人)/.test(x)); if(company)o.company=company.replace(/\s+/g,' ').trim();
-  let addr=lines.find(x=>/(都|道|府|県|市|区|町|村).*[0-9０-９]/.test(x) && !/(TEL|FAX|@)/i.test(x)); if(addr)o.address=addr.replace(/^〒?\s*\d{3}-?\d{4}\s*/,'');
-  let dept=lines.find(x=>/(部門|部署|営業部|総務部|企画部|開発部|課|チーム)/.test(x)); if(dept){let parts=dept.split(/\s+/); o.department=parts[0]; if(parts.length>1)o.title=parts.slice(1).join(' ')}
-  let title=lines.find(x=>/(社長|代表取締役|取締役|部長|課長|係長|主任|マネージャー|エンジニア|チーフ)/.test(x) && x!==dept); if(title && !o.title)o.title=title;
-  let jpCandidates=lines.filter(x=>/^[一-龯々ヶぁ-んァ-ヶー\s]{3,15}$/.test(x) && !/(株式会社|部門|部署|市|区|町|村)/.test(x));
-  if(jpCandidates.length)o.name=jpCandidates.sort((a,b)=>b.replace(/\s/g,'').length-a.replace(/\s/g,'').length)[0];
-  let roman=lines.find(x=>/^[A-Za-z][A-Za-z .'-]{3,40}$/.test(x) && !/^(TEL|FAX|Mail|Email|EPO)$/i.test(x)); if(roman)o.roman=roman;
-  return o;
-}
-function parseAndFill(text){let parsed=parseCardText(text); fill({date:new Date().toISOString().slice(0,10),status:'未対応'}); defs.forEach(([id])=>{if(parsed[id])document.getElementById(id).value=parsed[id]});formCard.classList.remove('hidden');ocrStatus.textContent='この名刺のOCR結果を反映しました。内容を確認・修正してから登録してください。'}
-function loadImage(src){
-  return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=src})
-}
-async function makeProcessed(angle=0){
-  const im=await loadImage(preview.src);
-  const rad=((angle%360)+360)%360;
-  const swap=rad===90||rad===270;
-  const maxSide=2200;
-  let scale=Math.min(2.2,maxSide/Math.max(im.naturalWidth,im.naturalHeight));
-  scale=Math.max(1,scale);
-  let sw=Math.round(im.naturalWidth*scale), sh=Math.round(im.naturalHeight*scale);
-  const c=document.getElementById('workCanvas');
-  c.width=swap?sh:sw; c.height=swap?sw:sh;
-  const ctx=c.getContext('2d',{willReadFrequently:true});
-  ctx.save(); ctx.translate(c.width/2,c.height/2); ctx.rotate(rad*Math.PI/180);
-  ctx.drawImage(im,-sw/2,-sh/2,sw,sh); ctx.restore();
-  let img=ctx.getImageData(0,0,c.width,c.height), d=img.data;
-  // grayscale + contrast. Keep dark text strong while whitening the background.
-  for(let i=0;i<d.length;i+=4){
-    let g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-    g=(g-128)*1.35+128;
-    g=Math.max(0,Math.min(255,g));
-    if(g>225) g=255;
-    d[i]=d[i+1]=d[i+2]=g;
+  o.web=firstMatch(t,/((?:https?:\/\/)?(?:www\.)?[a-z0-9][a-z0-9.-]+\.(?:jp|com|net|org|co\.jp)(?:\/\S*)?)/i);
+
+  // Japanese postal code: strictly 3 digits + 4 digits, optional 〒.
+  let zm=t.match(/(?:〒\s*)?(\d{3})[-ー－―‐\s](\d{4})(?!\d)/);
+  if(zm) o.zip=zm[1]+'-'+zm[2];
+
+  // Phones: normalize, then classify by nearby labels/prefix.
+  const phoneRx=/(?:0\d{1,4})[-ー－―‐\s]\d{1,4}[-ー－―‐\s]\d{3,4}/g;
+  let phones=[...t.matchAll(phoneRx)].map(m=>({raw:m[0], idx:m.index, val:m[0].replace(/[ー－―‐\s]/g,'-')}));
+  for(const p of phones){
+    const ctx=t.slice(Math.max(0,p.idx-18),Math.min(t.length,p.idx+p.raw.length+8));
+    if(/FAX|ファックス/i.test(ctx)){ if(!o.fax)o.fax=p.val; continue; }
+    if(/携帯|Mobile|MOBILE|携帯電話/i.test(ctx) || /^0(?:70|80|90)-/.test(p.val)){ if(!o.mobile)o.mobile=p.val; continue; }
+    if(/TEL|Tel|電話/i.test(ctx)){ if(!o.tel)o.tel=p.val; continue; }
+    if(!o.tel)o.tel=p.val;
   }
-  ctx.putImageData(img,0,0);
-  return c.toDataURL('image/jpeg',0.94);
-}
-async function manualRotate(delta){
-  manualAngle=(manualAngle+delta+360)%360;
-  const p=await makeProcessed(manualAngle);
-  preview.src=p;
-  selectedFile=null;
-  manualAngle=0;
-  rawOcr.value=''; fill({date:new Date().toISOString().slice(0,10),status:'未対応'});
-  ocrStatus.textContent='画像を回転しました。もう一度「無料OCRで読み取る」を押してください。';
-}
-function usefulScore(r){
-  const txt=(r.data.text||'').trim();
-  const chars=(txt.match(/[A-Za-z0-9一-龯ぁ-んァ-ヶ]/g)||[]).length;
-  const contacts=(txt.match(/@|TEL|FAX|〒|\d{2,4}[-ー]\d{2,4}/gi)||[]).length;
-  return (r.data.confidence||0) + Math.min(chars,80)*0.35 + contacts*8;
+
+  // Company / office
+  let companyLine=lines.find(x=>/(株式会社|有限会社|合同会社|一般社団法人|一般財団法人|社会福祉法人|医療法人|学校法人|NPO法人|特定非営利活動法人)/.test(x));
+  if(companyLine){
+    o.company=companyLine.replace(/^(会社名|Company)[:：\s]*/i,'').trim();
+  }
+  let officeLine=lines.find(x=>/(事業所|営業所|支店|支社|センター|オフィス|Office)/i.test(x) && x!==companyLine);
+  if(officeLine) o.office=officeLine.trim();
+
+  // Department / title
+  let dept=lines.find(x=>/(部|課|室|局|センター|事業部|営業部|総務部|管理部|IT部門|開発部|企画部|チーム)/.test(x)
+    && !/(住所|部署名|会社名)/.test(x));
+  if(dept) o.department=dept.trim();
+  let title=lines.find(x=>/(代表取締役|取締役|代表社員|社長|副社長|専務|常務|部長|課長|係長|主任|所長|施設長|管理者|責任者|マネージャー|エンジニア|デザイナー)/.test(x));
+  if(title) o.title=title.trim();
+
+  // Address: prefer lines containing prefecture/city/ward/town, exclude phone/email/web.
+  let addrLines=lines.filter(x=>
+    /(都|道|府|県).*(市|区|郡|町|村)|(?:市|区).*(?:町|丁目|\d[-－ー]\d)/.test(x)
+    && !/@|https?:|www\.|TEL|FAX/i.test(x)
+  );
+  if(addrLines.length){
+    o.address=addrLines.join(' ').replace(/〒?\s*\d{3}[-ー－―‐]\d{4}/,'').trim();
+  }
+
+  // Name: exclude obvious contact/address/company/title lines.
+  const bad=/(株式会社|有限会社|合同会社|法人|事業所|営業所|支店|支社|センター|部|課|室|代表|取締役|社長|部長|課長|主任|TEL|FAX|電話|携帯|Mail|E-mail|@|http|www|〒|\d{2,})/i;
+  let candidates=lines.filter(x=>!bad.test(x) && !/[都道府県].*[市区町村]/.test(x));
+  // Japanese personal names are usually 2-8 kanji/kana chars plus optional whitespace.
+  let nameLine=candidates.find(x=>{
+    let s=x.replace(/\s/g,'');
+    return /^[一-龯々ぁ-んァ-ヶー]{2,10}$/.test(s);
+  });
+  if(nameLine) o.name=nameLine.replace(/\s+/g,' ').trim();
+
+  // Romanized name if present.
+  let roman=candidates.find(x=>/^[A-Za-z][A-Za-z .'-]{2,35}$/.test(x) && x.split(/\s+/).length>=2);
+  if(roman) o.roman=roman.trim();
+
+  return o;
 }
 async function runOCR(){
   if(!preview.src){alert('先に名刺画像を選択してください');return}
